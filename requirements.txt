@@ -1,0 +1,15 @@
+pysheds
+numpy<2.0
+leafmap
+streamlit
+numpy
+pandas
+geopandas
+shapely
+folium
+matplotlib
+rasterio
+pyproj
+rioxarray
+xarray
+streamlit_folium
