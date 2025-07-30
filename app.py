@@ -7,10 +7,17 @@ from tempfile import NamedTemporaryFile
 import atexit
 import rasterio
 from rasterio.plot import show
+from rasterio.warp import calculate_default_transform, reproject, Resampling
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+import matplotlib.ticker as ticker
 import numpy as np
 from pysheds.grid import Grid
+import make_catchments
+import folium
+import io
+import contextlib
+from datetime import datetime
 
 # -------------------------------
 # Helper: Get WhiteboxTools Path
@@ -38,6 +45,33 @@ def get_whitebox_binary_path():
 
 st.title("Microwatershed Impact Assessment")
 
+def transform_crs_to_4326(src_path):
+    output_path = src_path.replace(".tif", "_4326.tif")
+    with rasterio.open(src_path) as src:
+        transform, width, height = calculate_default_transform(
+            src.crs, "EPSG:4326", src.width, src.height, *src.bounds
+        )
+        kwargs = src.meta.copy()
+        kwargs.update({
+            "crs": "EPSG:4326",
+            "transform": transform,
+            "width": width,
+            "height": height,
+            "nodata": src.nodata
+        })
+        with rasterio.open(output_path, "w", **kwargs) as dst:
+            for i in range(1, src.count + 1):
+                reproject(
+                    source=rasterio.band(src, i),
+                    destination=rasterio.band(dst, i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=transform,
+                    dst_crs="EPSG:4326",
+                    resampling=Resampling.bilinear
+                )
+    return output_path
+
 # Upload DEM
 uploaded_file = st.file_uploader("Upload Digital Elevation Model (DEM) file", type=["tif", "tiff"])
 
@@ -46,12 +80,14 @@ if uploaded_file:
         tmp_input.write(uploaded_file.read())
         input_path = tmp_input.name
 
-    output_path = input_path.replace(".tif", "_dem.tif")
+    reprojected_path = transform_crs_to_4326(input_path)
+    output_path = reprojected_path.replace(".tif", "_dem.tif")
+    input_path = reprojected_path  # for consistency with rest of script
 
     # Register cleanup of temporary files
     atexit.register(lambda: os.remove(input_path) if os.path.exists(input_path) else None)
+    atexit.register(lambda: os.remove(reprojected_path) if os.path.exists(reprojected_path) else None)
     atexit.register(lambda: os.remove(output_path) if os.path.exists(output_path) else None)
-
 
     # Show input metadata
     # try:
@@ -194,17 +230,18 @@ if uploaded_file:
 
     # Plot smoothed DEM with CRS and colorbar
     with rasterio.open(output_path) as src:
-        dem_data = src.read(1)
+        nodata_val = src.nodata or 9999
+        dem_data = src.read(1, masked=True)
+        masked = np.ma.masked_where(dem_data == nodata_val, dem_data)
         extent = rasterio.plot.plotting_extent(src)
 
         fig, ax = plt.subplots(figsize=(10, 8))
-        cax = ax.imshow(dem_data, extent=extent, cmap='terrain')
+        cax = ax.imshow(masked, extent=extent, cmap='terrain')
         ax.set_title("Smoothed DEM")
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
         fig.colorbar(cax, ax=ax, label="Elevation (m)")
         st.pyplot(fig)
-
 
     # Plot no-flow cells before breaching
     with st.expander("No-Flow Cells Before Breaching"):
@@ -212,28 +249,32 @@ if uploaded_file:
             data = src.read(1)
             extent = rasterio.plot.plotting_extent(src)
 
-            fig, ax = plt.subplots(figsize=(10, 8))
-            cax = ax.imshow(data, extent=extent, cmap='viridis')
-            ax.set_title("No-Flow Cells Before Breaching")
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            fig.colorbar(cax, ax=ax, label="Value")
-            st.pyplot(fig)
+            # Filter to binary mask: 1 = show, 9999 = skip
+            binary_mask = (data == 1).astype(int)
+            cmap = plt.cm.get_cmap("Greys", 2)
 
+            fig, ax = plt.subplots(figsize=(10, 8))
+            cax = ax.imshow(binary_mask, extent=extent, cmap=cmap)
+            ax.set_title("No-Flow Cells (Binary)")
+            ax.set_xlabel("Longitude")
+            ax.set_ylabel("Latitude")
+            fig.colorbar(cax, ax=ax, ticks=[0, 1], label="No-Flow")
+            st.pyplot(fig)
 
     # Plot conditioned DEM
     with rasterio.open(conditioned_output_path) as src:
-        conditioned_dem = src.read(1)
+        nodata_val = src.nodata or 9999
+        dem_data = src.read(1, masked=True)
+        masked = np.ma.masked_where(dem_data == nodata_val, dem_data)
         extent = rasterio.plot.plotting_extent(src)
 
         fig, ax = plt.subplots(figsize=(10, 8))
-        cax = ax.imshow(conditioned_dem, extent=extent, cmap='terrain')
+        cax = ax.imshow(masked, extent=extent, cmap='terrain')
         ax.set_title("Conditioned DEM (Depressions Breached)")
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
         fig.colorbar(cax, ax=ax, label="Elevation (m)")
         st.pyplot(fig)
-
 
     # Plot no-flow cells after breaching
     with st.expander("No-Flow Cells After Breaching"):
@@ -241,12 +282,16 @@ if uploaded_file:
             data = src.read(1)
             extent = rasterio.plot.plotting_extent(src)
 
+            # Filter to binary mask: 1 = show, 9999 = skip
+            binary_mask = (data == 1).astype(int)
+            cmap = plt.cm.get_cmap("Greys", 2)
+
             fig, ax = plt.subplots(figsize=(10, 8))
-            cax = ax.imshow(data, extent=extent, cmap='viridis')
+            cax = ax.imshow(binary_mask, extent=extent, cmap=cmap)
             ax.set_title("No-Flow Cells After Breaching")
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            fig.colorbar(cax, ax=ax, label="Value")
+            ax.set_xlabel("Longitude")
+            ax.set_ylabel("Latitude")
+            fig.colorbar(cax, ax=ax, ticks=[0, 1], label="No-Flow")
             st.pyplot(fig)
 
     # -------------------------------
@@ -280,7 +325,7 @@ if uploaded_file:
                         values=sorted(dirmap))
             plt.xlabel('X')
             plt.ylabel('Y')
-            plt.title('Flow direction grid', size=14)
+            plt.title('Flow Direction Grid', size=14, fontsize=16, fontweight='bold')
             plt.grid(zorder=-1)
             plt.tight_layout()
             st.pyplot(fig)
@@ -296,11 +341,143 @@ if uploaded_file:
                         norm=colors.LogNorm(1, acc.max()),
                         interpolation='bilinear')
             plt.colorbar(im, ax=ax, label='Upstream Cells')
-            plt.title('Flow Accumulation', size=14)
+            plt.title('Flow Accumulation', fontsize=16, fontweight='bold')
             plt.xlabel('X')
             plt.ylabel('Y')
             plt.tight_layout()
             st.pyplot(fig)
 
+            # Flatten and filter flow accumulation values
+            acc_values = acc.flatten()
+            acc_values = acc_values[acc_values > 0]  # Remove nodata or zero values
+            # Create the histogram figure
+            fig_hist, ax_hist = plt.subplots(figsize=(10, 6), dpi=100)
+            # Plot histogram
+            n, bins, patches = ax_hist.hist(
+                acc_values,
+                bins=60,
+                color='#1f77b4',
+                edgecolor='black',
+                linewidth=0.8
+    )
+            # Annotate the peak bin
+            max_bin_index = np.argmax(n)
+            peak_bin_center = 0.5 * (bins[max_bin_index] + bins[max_bin_index + 1])
+            peak_bin_height = n[max_bin_index]
+            ax_hist.annotate(
+                f'Peak: {int(peak_bin_height):,}',
+                xy=(peak_bin_center, peak_bin_height),
+                xytext=(peak_bin_center, peak_bin_height * 1.5),
+                arrowprops=dict(facecolor='black', arrowstyle='->'),
+                fontsize=10,
+                ha='center',
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=0.5)
+            )
+            # Axis labels and title
+            ax_hist.set_title('Distribution of Flow Accumulation Values', fontsize=16, fontweight='bold')
+            ax_hist.set_xlabel('Flow Accumulation Value', fontsize=13)
+            ax_hist.set_ylabel('Frequency (log scale)', fontsize=13)
+            # Log scale and grid
+            ax_hist.set_yscale('log')
+            ax_hist.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+            # Format x-axis ticks
+            ax_hist.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'{int(x):,}'))
+            # Layout and display
+            plt.tight_layout()
+            st.pyplot(fig_hist)
+        
         except Exception as e:
             st.error(f"PySheds processing failed: {e}")
+
+        # Interactive stream network visualization
+        with st.expander("Interactive Stream Network Visualization", expanded=True):
+            # Compute normalization for DEM
+            norm = colors.Normalize(vmin=np.nanmin(dem), vmax=np.nanmax(dem))
+            # Slider for flow accumulation threshold
+            channel_threshold = st.slider(
+                "Minimum Flow Accumulation for Stream Network",
+                min_value=100,
+                max_value=int(acc.max()),
+                value=1000,
+                step=100,
+                help="Adjust the threshold to control stream network density"
+            )
+
+            # Extract stream network
+            branches = grid.extract_river_network(
+                fdir,
+                acc > channel_threshold,
+                dirmap=dirmap,
+                nodata_out=np.int64(0)
+            )
+
+            fig_stream, ax_stream = plt.subplots(figsize=(8, 6))
+            fig_stream.patch.set_alpha(0)
+
+            ax_stream.set_xlim(grid.bbox[0], grid.bbox[2])
+            ax_stream.set_ylim(grid.bbox[1], grid.bbox[3])
+            ax_stream.set_aspect('equal')
+
+            for branch in branches['features']:
+                line = np.asarray(branch['geometry']['coordinates'])
+                ax_stream.plot(line[:, 0], line[:, 1])
+
+            ax_stream.imshow(dem, extent=grid.extent, cmap='terrain', norm=norm, zorder=1, alpha=0.4)
+            ax_stream.set_title(f'D8 Channels - Min Flow Acc of {channel_threshold}', fontsize=16, fontweight='bold')
+
+            st.pyplot(fig_stream)
+
+
+    # -------------------------------
+    # Nested Catchment Deliniation
+    # -------------------------------
+    st.header("Nested Catchment Deliniation")
+    with st.spinner("Nested Catchment Deliniation with Pysheds make_catchments wrapper"):
+
+        # Capture print output from generate_catchments
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            basins, branches = make_catchments.generate_catchments(
+                conditioned_output_path,
+                acc_thresh=5000,
+                so_filter=4
+            )
+        output_text = buffer.getvalue()
+        st.text("Progress:")
+        st.code(output_text)
+
+        # Print output
+        microwatersheds_gdf = basins.copy()
+        st.dataframe(microwatersheds_gdf)
+
+        # Get the current datetime and format it
+        now = datetime.now()
+        datetime_str = now.strftime("%Y-%m-%d_%H%M")  # Format: 2024-11-22_0230
+
+        # Define the output file path
+        os.makedirs(rf'{datetime_str}', exist_ok=True)
+        output_file_path = f"{datetime_str}/branches.shp"
+
+        # Export the GeoDataFrame to a shapefile
+        branches.to_file(output_file_path, driver='ESRI Shapefile')
+
+        # Create a figure for plotting all catchments
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        # Plot conditioned DEM
+        with rasterio.open(conditioned_output_path) as src:
+            conditioned_dem = src.read(1)
+            extent = rasterio.plot.plotting_extent(src)
+
+            cax = ax.imshow(conditioned_dem, extent=extent, cmap='terrain')
+            ax.set_title("Conditioned DEM (Depressions Breached)")
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+
+        microwatersheds_gdf.plot(ax=ax, aspect=1, cmap='tab20', edgecolor='white', alpha=0.5)
+        branches.plot(ax=ax, aspect=1, color='black', linewidth=0.3)
+
+        # Add title and show the combined plot
+        plt.title('Microwatersheds - Delineated from Channel Junction Points')
+        st.pyplot(fig)
+
