@@ -57,7 +57,7 @@ st.title("Microwatershed Impact Assessment")
 m = folium.Map(location=[27.6380, -80.3984], zoom_start=12)
 Draw(export=False).add_to(m)
 st.subheader("Draw a boundary on the map")
-map_data = st_folium(m, width=700, height=500)
+map_data = st_folium(m, width=700, height=700)
 
 if map_data["last_active_drawing"]:
     geometry = map_data["last_active_drawing"].get("geometry", {})
@@ -587,7 +587,7 @@ if map_data["last_active_drawing"]:
             except Exception as e:
                 st.error(f"Processing failed: {e}")
                 st.stop()
-                                  
+
     else:
         st.warning("Please draw a valid polygon.")
 else:
