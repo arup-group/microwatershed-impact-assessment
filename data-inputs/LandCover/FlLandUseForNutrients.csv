@@ -1,0 +1,28 @@
+﻿LandUse,FlLandUse,RunoffCoefficient,PercentDCIA,TotalNitrogenEMC_(mg/L),TotalPhosEMC_(mg/L),CurveNumber
+Wetland,Vegetated Non-Forested Wetlands / Wetland Forested Mixed / Wetland Hardwood Forests / Wetland Coniferous Forests / Non-Vegetated Wetlands,0.111,0,1.5,0.1,78
+Medium Density Residential (MDR),Residential Medium Density,0.29,20,1.87,0.301,85
+Scrub,Shrub and Brushland,0.14,0,1.16,0.096,83
+Citrus,Tree Crops,0.25,0,2.07,0.152,91
+Pasture,Cropland and Pastureland,0.16,0,3.3,0.621,84
+Wet Flatwoods,Wetland Forested Mixed / Wetland Coniferous Forests,0.11,0,1.18,0.015,78
+Upland Flatwoods,Upland Coniferous Forests / Upland Hardwood Forests,0.11,0,1,0.034,78
+Low Density Residential (LDR),Residential Low Density,0.111,0,1.51,0.178,80
+Dry Prairie,Herbaceous,0.16,0,1.95,0.107,84
+Water,Streams and Waterways / Lakes / Reservoirs / Bays and Estuaries / Beaches Other Than Swimming Beaches,0.809,100,0,0,100
+Institutional,Institutional,0.299,10,1.51,0.178,90
+High Density Residential (HDR),Residential High Density,0.45,30,2.1,0.497,92
+Open,Open Land / Sand Other Than Beaches,0.12,0,1.15,0.055,82
+Commercial,Commercial and Services,0.647,60,1.64,0.214,95
+Xeric Hammock,Upland Hardwood Forests / Mixed Rangeland,0.14,0,1.32,0.082,83
+Wet Prairies,Vegetated Non-Forested Wetlands,0.095,0,0.78,0.009,78
+Hydric Hammock,Wetland Hardwood Forests,0.095,0,1.07,0.026,78
+Recreational 1 - Golf Courses,Recreational,0.111,0,1.87,0.301,80
+Transportation,Transportation / Utilities / Communications,0.5,30,1.37,0.167,93
+Industrial,Industrial,0.4,10,1.19,0.213,93
+"Recreational 2 - Parks, etc.",Recreational,0.181,10,1.51,0.178,80
+Agriculture,Cropland and Pastureland / Specialty Farms / Nurseries and Vineyards / Tree Plantations / Feeding Operations,0.25,0,2.61,0.485,91
+Ruderal,Disturbed Lands / Other Open Lands <Rural> / Special Classifications,0.17,0,1.32,0.347,86
+Mesic Flatwoods,Upland Mixed Forests / Upland Coniferous Forests,0.1,0,1,0.034,78
+Mining,Extractive,0.4,0,1.18,0.15,94
+Row Crops,Cropland and Pastureland,0.25,0,2.46,0.489,91
+Upland Mixed Forest,Upland Mixed Forests,0.1,0,0.68,0.229,79

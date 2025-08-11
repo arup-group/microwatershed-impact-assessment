@@ -34,18 +34,21 @@ def calc_attributes(row,dem,profiles,so):
        Topographic metrics such as relief and slope are 
        approximations only.'''
     
-    index = row.name 
-    row['Length'] = geod.geometry_length(row['geometry'])
-    row['Relief'] = int(np.ptp(dem.flat[profiles[index]]))
-    
-    row['Order'] = int(np.min(so.flat[profiles[index]]))
-    # note: 'so.flat[profiles[index]]' returns a 1d array of length n
-    # where all values are equal to the stream order for that profile.
-    # so if it is a 1st order channel, the array has all 1's. 
-    
-    row['Slope'] = np.rad2deg(np.arctan2(row['Relief'],row['Length']))
-    row['Index'] = row.name
-    return row 
+    geometry = row['geometry']
+    index = row.name
+    length = geod.geometry_length(row['geometry'])
+    relief = int(np.ptp(dem.flat[profiles[index]]))
+    order = int(np.min(so.flat[profiles[index]]))
+    slope = np.rad2deg(np.arctan2(relief, length))
+
+    return pd.Series({
+        'geometry': geometry,
+        'Length': length,
+        'Relief': relief,
+        'Order': order,
+        'Slope': slope,
+        'Index': index
+    })
 
 def make_connections(profiles, connections):
     '''creates full connections map for stream network.'''
@@ -172,7 +175,7 @@ def generate_catchments(path,acc_thresh=100,so_filter=3,
     
     # make main GeoDataFrame -- the indices here will match those of all profile
     # and connection lists that follow
-    branch_gdf = gpd.GeoDataFrame.from_features(branches,crs='epsg:4326')
+    branch_gdf = gpd.GeoDataFrame.from_features(branches, crs='epsg:4326')
     
     # generate profiles for each individual segment
     profiles, connections = grid.extract_profiles(fdir=fdir,mask=mask,include_endpoint=False)
@@ -185,7 +188,6 @@ def generate_catchments(path,acc_thresh=100,so_filter=3,
     # create all profile and connection lists w/ pour points
     print('Calculating pour points...')
     branch_gdf = branch_gdf.apply(lambda x: make_profile(x,so,coords,profile_list,connection_list),axis=1)
-    
     branch_gdf_copy = branch_gdf.copy() # unfiltered copy to return at end
     
     # some of these sections will have duplicate orders and pour points - drop them
@@ -201,27 +203,21 @@ def generate_catchments(path,acc_thresh=100,so_filter=3,
     branch_gdf = branch_gdf.apply(lambda x: make_basin(x,grid,dem,fdir,routing,algorithm),axis=1)
 
     b_copy = branch_gdf.copy()
-    b_copy.set_geometry('BasinGeo',inplace=True)
-    b_copy.set_crs('epsg:4326',inplace=True)
+    b_copy = b_copy.set_geometry('BasinGeo')
+    b_copy = b_copy.set_crs('epsg:4326')
     
     copy_for_area = b_copy.copy()
-    copy_for_area.to_crs('EPSG:3857')
-    copy_for_area = copy_for_area.to_crs('EPSG:3857')
+    copy_for_area = copy_for_area.to_crs('epsg:6933')
+    copy_for_area.geometry.area
     copy_for_area['AreaSqKm'] = copy_for_area.geometry.area  / 1000000
 
     b_copy['AreaSqKm'] = copy_for_area['AreaSqKm']
-    print(copy_for_area.geometry.area)
-    print(b_copy.geometry.area)
-
-    # sanity check
-    print(b_copy.crs)
-    print(copy_for_area.crs)
     
-    basin_drop_cols = ['geometry','LocalPP'] #,'Profile','Chain']
+    basin_drop_cols = ['geometry', 'LocalPP'] #,'Profile','Chain']
     branch_drop_cols = ['LocalPP'] #,'Profile','Chain']
     
-    b_copy.drop(basin_drop_cols,axis=1,inplace=True)
-    branch_gdf_copy.drop(branch_drop_cols,axis=1,inplace=True)
+    b_copy = b_copy.drop(basin_drop_cols,axis=1)
+    branch_gdf_copy = branch_gdf_copy.drop(branch_drop_cols,axis=1)
     
     b_copy['Profile'] = b_copy['Profile'].astype(str)
     b_copy['Chain'] = b_copy['Chain'].astype(str)
