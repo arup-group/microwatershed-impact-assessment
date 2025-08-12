@@ -2,14 +2,15 @@ pysheds
 numpy<2.0
 leafmap
 streamlit
-numpy
 pandas
 geopandas
 shapely
 folium
 matplotlib
 rasterio
+rasterstats
 pyproj
 rioxarray
 xarray
 streamlit_folium
+py3dep
