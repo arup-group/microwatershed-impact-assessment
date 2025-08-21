@@ -1,1 +1,17 @@
-data-inputs/ImperviousArea/*
+# Ignore virtual environment
+.venv/
+
+# Ignore Python cache and compiled files
+__pycache__/
+.mypy_cache/
+*.pyc
+
+# Ignore lock file
+uv.lock
+
+# Ignore outputs directory
+outputs/
+
+# Ignore specific data inputs
+data/ImperviousArea/*
+tools/*
