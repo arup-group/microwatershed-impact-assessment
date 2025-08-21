@@ -14,4 +14,3 @@ outputs/
 
 # Ignore specific data inputs
 data/ImperviousArea/*
-tools/*
