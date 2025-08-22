@@ -68,41 +68,68 @@ def get_whitebox_binary_path():
 # -------------------------------
 # Streamlit App
 # -------------------------------
+st.set_page_config(
+    page_title="Microwatershed Impact Assessment",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+def clear_all():
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+with st.sidebar:
+    st.header("Utilities")
+    st.button("🔄 Clear Session", on_click=clear_all)
+    st.markdown("Use this to reset your inputs and start fresh.")
+
 st.title("Microwatershed Impact Assessment")
+st.markdown("""
+Welcome to the Microwatershed Impact Assessment tool!  
+Choose how you'd like to define your area of interest, either by drawing directly on the map or uploading a Shapefile.  
+Once defined, the app will fetch elevation data and perform hydrological conditioning.
+""")
+
 
 # User choice
+st.subheader("Step 1: Define Your Area of Interest")
 option = st.radio("Choose input method:", ["Draw on map", "Upload Shapefile"])
+
 polygon = None
 
-
 if option == "Draw on map":
-    m = folium.Map(location=[27.6380, -80.3984], zoom_start=12)
-    Draw(export=False).add_to(m)
-    st.subheader("Draw a boundary on the map")
-    map_data = st_folium(m, width=900, height=600)
+    with st.container():
+        st.subheader("Step 2: Draw a Boundary")
+        st.write("Use the map below to draw a polygon that defines your area of interest. Only polygon shapes are supported.")
+        m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
+        Draw(export=False).add_to(m)
+        map_data = st_folium(m, width=None, height=400)
 
-    if map_data["last_active_drawing"]:
-        geometry = map_data["last_active_drawing"].get("geometry", {})
-        coords = geometry.get("coordinates")
-        geom_type = geometry.get("type")
+        if map_data["last_active_drawing"]:
+            geometry = map_data["last_active_drawing"].get("geometry", {})
+            coords = geometry.get("coordinates")
+            geom_type = geometry.get("type")
 
-        if coords and geom_type == "Polygon":
-            polygon = Polygon(coords[0])
-            st.write(polygon)
-
+            if coords and geom_type == "Polygon":
+                polygon = Polygon(coords[0])
+                st.success("Polygon captured successfully.")
+                st.write(polygon)
 
 elif option == "Upload Shapefile":
-    uploaded_file = st.file_uploader("Upload a zipped Shapefile (.zip)", type=["zip"])
-    if uploaded_file:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            zip_path = os.path.join(tmp_dir, "shapefile.zip")
-            with open(zip_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            shutil.unpack_archive(zip_path, tmp_dir)
-            shp_files = [f for f in os.listdir(tmp_dir) if f.endswith(".shp")]
-            if shp_files:
-                gdf = gpd.read_file(os.path.join(tmp_dir, shp_files[0])).to_crs(4326)
-                polygon = gdf.geometry.unary_union
+    with st.container():
+        st.subheader("Step 2: Upload a Shapefile")
+        uploaded_file = st.file_uploader("Upload a zipped Shapefile (.zip)", type=["zip"])
+
+        if uploaded_file:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                zip_path = os.path.join(tmp_dir, "shapefile.zip")
+                with open(zip_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                shutil.unpack_archive(zip_path, tmp_dir)
+                shp_files = [f for f in os.listdir(tmp_dir) if f.endswith(".shp")]
+                if shp_files:
+                    gdf = gpd.read_file(os.path.join(tmp_dir, shp_files[0])).to_crs(4326)
+                    polygon = gdf.geometry.unary_union
 
 
 if polygon:
@@ -125,8 +152,9 @@ if polygon:
                     st.stop()
 
                 binary_path = get_whitebox_binary_path()
-                st.sidebar.write("OS:", platform.system())
-                st.sidebar.write("WhiteboxTools path:", binary_path)
+                ## debug
+                # st.sidebar.write("OS:", platform.system())
+                # st.sidebar.write("WhiteboxTools path:", binary_path)
 
                 st.header("DEM Conditioning")
                 st.write("Executing WhiteboxTools: FeaturePreservingSmoothing...")
@@ -1197,6 +1225,9 @@ if polygon:
                 # Print the DataFrame
                 print(filter_df.head(20))
 
+                st.header("MIcrowatershed Characteristics")
+                st.dataframe(filter_df)
+
                 # Save plot to pdf
                 # pdf_pages.savefig(fig)
 
@@ -1262,6 +1293,8 @@ if polygon:
                 filter_df.to_csv(rf'outputs\\tables\\SummaryTable_{file}_{datetime_str}.csv', index=False)
                 # also export the filtered df but with all the columns
                 microwatersheds_filter_gdf.to_csv(rf'outputs\\tables\\SummaryTable_{file}_{datetime_str}_Full.csv', index=False)
+
+                st.dataframe(microwatersheds_filter_gdf)
 
                 # pdf_pages.savefig(fig)  # Save the DataFrame table to the PDF
                 # pdf_pages.close()
