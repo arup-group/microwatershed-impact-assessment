@@ -41,7 +41,6 @@ from streamlit_folium import st_folium
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core import make_catchments
 
-
 # -------------------------------
 # Helper: Get WhiteboxTools Path
 # -------------------------------
@@ -90,7 +89,6 @@ Choose how you'd like to define your area of interest, either by drawing directl
 Once defined, the app will fetch elevation data and perform hydrological conditioning.
 """)
 
-
 # User choice
 st.subheader("Step 1: Define Your Area of Interest")
 option = st.radio("Choose input method:", ["Draw on map", "Upload Shapefile"])
@@ -130,7 +128,6 @@ elif option == "Upload Shapefile":
                 if shp_files:
                     gdf = gpd.read_file(os.path.join(tmp_dir, shp_files[0])).to_crs(4326)
                     polygon = gdf.geometry.unary_union
-
 
 if polygon:
     with st.spinner("Fetching DEM from 3DEP..."):
@@ -312,10 +309,6 @@ if polygon:
                         fig.colorbar(cax, ax=ax, ticks=[0, 1], label="No-Flow")
                         st.pyplot(fig)
 
-
-
-
-
                 # -------------------------------
                 # PySheds Flow Accumulation & Direction
                 # -------------------------------
@@ -451,7 +444,6 @@ if polygon:
 
                 st.pyplot(fig_stream)
 
-
                 # -------------------------------
                 # Nested Catchment Deliniation
                 # -------------------------------
@@ -504,7 +496,6 @@ if polygon:
                 # Add title and show the combined plot
                 plt.title('Microwatersheds - Delineated from Channel Junction Points')
                 st.pyplot(fig)
-
 
                 # -------------------------------
                 # Prioritization Attributes - Calculations
@@ -799,11 +790,6 @@ if polygon:
                 microwatersheds_all_gdf = calculate_pondshed_impervious(impervious_raster, microwatersheds_all_gdf, pondsheds_4269)
 
                 # Ensure rainfall raster is in web mercator
-
-                import rasterio
-                import numpy as np
-                from rasterio.warp import calculate_default_transform, reproject, Resampling
-
                 annual_rainfall_path = r'data\\Annual-Rainfall\\PRISM_ppt_30yr_normal_4kmM4_annual_bil.bil'
 
                 # Open the source raster
@@ -845,13 +831,9 @@ if polygon:
                         ) as dst:
                             dst.write(reprojected_data)
 
-
                 annual_rainfall_path = 'data\\temp\\temp_reprojected_raster_rainfall.tif'
                 rain = Grid.from_raster(annual_rainfall_path)
                 rainfall = rain.read_raster(annual_rainfall_path)
-
-                import geopandas as gpd
-                from rasterstats import zonal_stats
 
                 raster_path = 'data\\temp\\temp_reprojected_raster_rainfall.tif'
 
@@ -875,7 +857,6 @@ if polygon:
 
                 # Run function on the pondsheds dataset
                 pondsheds_4269 = get_annual_rainfall(pondsheds_4269, raster_path)
-
 
                 # Annual runoff by land class
 
@@ -955,7 +936,6 @@ if polygon:
                         """Calculate Incremental Annual Wet Weather Capture (MG/yr)."""
                         # Calculate Incremental Annual Wet Weather Capture (MG/yr).
                         
-
                         passive_volume_inIA = (passive_volume_acft / (pondshed_impervious_area_ac * runoff_coefficient)) * 12 if (pondshed_impervious_area_ac * runoff_coefficient) != 0 else 0
                         cmac_volume_inIA = (cmac_volume_acft / (pondshed_impervious_area_ac * runoff_coefficient)) * 12 if (pondshed_impervious_area_ac * runoff_coefficient) != 0 else 0
                         
@@ -997,7 +977,6 @@ if polygon:
                     
                     return gdf
                 
-
                 microwatersheds_all_gdf = annual_control_volume(microwatersheds_all_gdf)
 
                 # Land cover "urban area" percentage
@@ -1045,10 +1024,8 @@ if polygon:
 
                 microwatersheds_all_gdf = urban_area(land_cover, microwatersheds_all_gdf)
 
-
                 # Nutrient load calculation
                 land_cover = gpd.read_file(r'data\\LandCover\\Land_Cover_IRL_4326.shp')
-
 
                 def calculate_nutrients(overlay_gdf, microwatersheds_gdf, pondsheds):
 
@@ -1075,7 +1052,6 @@ if polygon:
                     land_use_merge = land_use_intersect.merge(
                         lookup_df, left_on='LEVEL2_L_1', right_on='FlLandUse', how='left'
                     )
-
 
                     # Calculate Runoff for each classification
                     # Calculate Runoff_m3_per_year = LULC_Area_m2 * RunoffCoefficient (from lookup table column RunoffCoefficient, for a given class) * annual rainfall inches * 0.0254 (m/in)
@@ -1107,13 +1083,6 @@ if polygon:
                     return microwatersheds_gdf, land_use_merge
 
                 microwatersheds_all_gdf, land_use_merge_pshed = calculate_nutrients(land_cover, microwatersheds_all_gdf, pondsheds_4269)
-
-
-                import matplotlib.pyplot as plt
-                import os
-                from matplotlib import colors
-                import os
-                from datetime import datetime
 
                 now = datetime.now()
                 datetime_str = now.strftime("%Y-%m-%d_%H%M")  # Format: 2024-11-22_0230
@@ -1281,8 +1250,6 @@ if polygon:
                 table.set_fontsize(7)
                 table.scale(1.2, 1.2)  # Adjust the size of the table
 
-
-
                 # Adjust header cell height if needed
                 for (i, j), cell in table.get_celld().items():
                     if i == 0:  # Header row
@@ -1306,7 +1273,6 @@ if polygon:
                 #     else:  # For macOS and Linux
                 #         subprocess.call(['open', pdf_path])  # macOS
                 #         # subprocess.call(['xdg-open', pdf_path])  # Linux
-
 
         except Exception as e:
             st.error(f"Processing failed: {e}")
