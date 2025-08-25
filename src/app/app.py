@@ -1273,6 +1273,140 @@ if polygon:
                 #     else:  # For macOS and Linux
                 #         subprocess.call(['open', pdf_path])  # macOS
                 #         # subprocess.call(['xdg-open', pdf_path])  # Linux
+#JAYSEA"S CHANGES STARTING HERE
+                x = polygon.centroid.x
+                y = polygon.centroid.y
+            
+                option = st.selectbox(
+                    "Which attribute would you like to examine?",
+                    ("Pond Count", "Area Acres", "Order", "Pond Controllable Volume", "Nitrogen lbs per year", "Phosphorous lbs per year", "Annual Volume Treated (MG/Yr)"),
+                    index=None,
+                    placeholder="Select attribute...",
+                )
+                #while option is None:
+                    # pass
+                    
+                #else:
+                st.write(f"You selected: {option}")
+                # st.write("Current selection:", option)
+
+            
+                for choice in option:
+                    if option == "Pond Count":
+                        field = 'Pond_Count'
+                    if option == "Area Acres":
+                        field = "Area_Acres"
+                    if option == "Pond Controllable Volume":
+                        field = "Pond_Controllable_Volume_Ac-Ft"
+                    if option == "Nitrogen lbs per year":
+                        field = "Nitrogen_lb_per_year"
+                    if option == "Phosphorous lbs per year":
+                        field = "Phosphorous_lb_per_year"
+                    if option == "Annual Volume Treated (MG/Yr)":
+                        field = "Annual_Volume_Treated_MG/Yr"
+            
+            
+
+            microwatersheds_all_gdf[field] = microwatersheds_all_gdf[field].fillna(0)
+            option_dict = {str(k): v for k, v in microwatersheds_all_gdf.set_index("Microwatershed_ID")[field].to_dict().items()}
+
+            min_v = microwatersheds_all_gdf[field].min()
+            max_v = microwatersheds_all_gdf[field].max()
+            
+            st.write(microwatersheds_all_gdf[field])
+            
+
+            #Set colorway
+            colormap = cm.linear.OrRd_09.scale(min_v, max_v)
+            
+            #create map
+            map = folium.Map(location=[y, x], tiles="OpenStreetMap", zoom_start=12)
+
+            #create pond layer to be displayed
+            pond_layer = folium.FeatureGroup(name = 'Ponds')
+            folium.GeoJson(ponds_intersect, color = 'blue').add_to(pond_layer)
+            
+            #microwatershed folium layer
+            folium.GeoJson(
+                microwatersheds_all_gdf,
+                    style_function=lambda feature: {
+                        "fillColor": colormap(option_dict.get(str(feature["properties"]["Microwatershed_ID"]),)),
+                        "color": "black",
+                        "weight": 1,
+                        "fillOpacity": 0.9,
+
+                },
+            ).add_to(map)
+            colormap.add_to(map)
+
+
+            #add pond layer
+            pond_layer.add_to(map)
+
+            st.header("Ranked Map of " + option)
+            st_data = st_folium(map, width=725)
+            if st_data and st_data.get("last_active_drawing"):
+                properties = st_data["last_active_drawing"].get("properties", {})
+
+                # Choose the keys you want to display from the properties
+                keys_to_display = ["Microwatershed_ID", "Pond_Count", "Area_Acres",
+                                "Percent_Urban", "Nitrogen_lb_per_year", "Phosphorous_lb_per_year","Annual_Volume_Treated_MG/Yr"]
+
+                st.write("### Selected Feature Details")
+                for key in keys_to_display:
+                    value = properties.get(key)
+                    if value is not None:
+                        st.write(f"**{key}**: {value}")
+                        
+            else:
+                st.write("Please click on a microwatershed to learn more.")
+
+
+
+            choice = st.radio("Choose input method:", ["Draw on map", "Load Pondshed Buffers"], key="input_method_choice")
+            pondbound = None
+       
+            
+
+                        
+            # Streamlit UI
+            st.title("Edit Drainage Area by Redrawing")
+
+            # Step 1: Select a pondshed
+            selected_name = st.selectbox("Select a pondshed to modify:", pondsheds_4269["Microwatershed_ID"])
+            selected_pond = pondsheds_4269[pondsheds_4269["Microwatershed_ID"] == selected_name].iloc[0]
+            selected_geom = selected_pond.geometry
+            centroid = selected_geom.centroid
+            x, y = centroid.x, centroid.y
+
+            # Step 2: Display map with selected pondshed
+            map3 = folium.Map(location=[y, x], zoom_start=14)
+
+            # Add selected pondshed as reference
+            folium.GeoJson(
+                json.loads(gpd.GeoSeries([selected_geom]).to_json()),
+                name="Selected Pondshed",
+                tooltip=selected_name
+            ).add_to(map3)
+
+            # Step 3: Add drawing tools
+            Draw(export=True).add_to(map3)
+
+            # Step 4: Show map and capture drawn geometry
+            st.subheader("Draw a new drainage area to replace the selected pondshed")
+            map_data2 = st_folium(map3, width=900, height=600, key="draw_map")
+
+            pondbound = None
+            if map_data2 and map_data2.get("last_active_drawing"):
+                geometry_p = map_data2["last_active_drawing"].get("geometry", {})
+                coordinates = geometry_p.get("coordinates")
+                geometry_type = geometry_p.get("type")
+
+                if coordinates and geometry_type == "Polygon":
+                    pondbound = Polygon(coordinates[0])
+                    st.success("New drainage area captured:")
+                    st.write(pondbound)
+
 
         except Exception as e:
             st.error(f"Processing failed: {e}")
