@@ -12,6 +12,7 @@ import io
 import contextlib
 import shutil
 from datetime import datetime
+import json
 
 # ─────────────────────────────────────────────────────────────
 # Third-Party Library Imports
@@ -23,6 +24,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.ticker as ticker
+import branca.colormap as cm
 from matplotlib.backends.backend_pdf import PdfPages
 import rasterio
 from rasterio.plot import show
