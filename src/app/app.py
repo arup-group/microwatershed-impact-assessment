@@ -121,7 +121,7 @@ if option == "Draw on map":
 
     m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
     Draw(export=False).add_to(m)
-    map_data = st_folium(m, width="100%", height=650)
+    map_data = st_folium(m, width="100%", height=500)
 
     if map_data["last_active_drawing"]:
         geometry = map_data["last_active_drawing"].get("geometry", {})
@@ -348,17 +348,6 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                     microwatersheds_gdf = basins.copy()
                     st.session_state["microwatersheds_gdf"] = microwatersheds_gdf
                     st.dataframe(microwatersheds_gdf)
-
-                    # Get the current datetime and format it
-                    now = datetime.now()
-                    datetime_str = now.strftime("%Y-%m-%d_%H%M")  # Format: 2024-11-22_0230
-
-                    # Define the output file path
-                    os.makedirs(rf'data/branches/{datetime_str}', exist_ok=True)
-                    output_file_path = f"data/branches/{datetime_str}/branches.shp"
-
-                    # Export the GeoDataFrame to a shapefile
-                    branches.to_file(output_file_path, driver='ESRI Shapefile')
 
 
 
@@ -958,7 +947,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         print(filter_df.head(20))
 
                         st.header("Microwatershed Characteristics")
-                        st.subheader("Filtered Table")
+                        st.subheader("Total Pondshed Area")
                         st.dataframe(filter_df)
 
                         st.session_state["microwatersheds_all_gdf"] = microwatersheds_all_gdf
@@ -973,7 +962,7 @@ st.title("Microwatershed Prioritization Viewer")
 
 # --- Load data only once ---
 if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microwatersheds_all_gdf"] is None:
-    st.warning("Microwatershed data not loaded. Please check your data source.")
+    st.warning("Please specify an area on interest on the map.")
 else:
     attribute_options = {
         "Pond Count": "Pond_Count",
