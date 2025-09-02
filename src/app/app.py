@@ -987,30 +987,64 @@ else:
             placeholder="Choose an attribute..."
         )
 
-        threshold = None
         field = None
+        above_value = None
+        below_value = None
+        threshold_range = None
+        filter_mode = None
 
         if selected_attribute:
             field = attribute_options[selected_attribute]
             gdf = st.session_state["microwatersheds_all_gdf"].copy()
             gdf[field] = gdf[field].fillna(0)
-            min_val = gdf[field].min()
-            max_val = gdf[field].max()
+            min_val = float(gdf[field].min())
+            max_val = float(gdf[field].max())
 
-            threshold = st.slider(
-                f"Minimum {selected_attribute} to include:",
-                min_value=float(min_val),
-                max_value=float(max_val),
-                value=float(min_val),
-                step=1.0
+            filter_mode = st.radio(
+                f"Choose filter mode for {selected_attribute}:",
+                ["Range slider", "Above and/or Below"]
             )
+
+            if filter_mode == "Range slider":
+                threshold_range = st.slider(
+                    f"{selected_attribute} range:",
+                    min_value=min_val,
+                    max_value=max_val,
+                    value=(min_val, max_val),
+                    step=1.0
+                )
+            else:
+                col1, col2 = st.columns(2)
+                with col1:
+                    above_value = st.number_input(
+                        f"Include values **above**:",
+                        min_value=min_val,
+                        max_value=max_val,
+                        value=min_val,
+                        step=1.0
+                    )
+                with col2:
+                    below_value = st.number_input(
+                        f"Include values **below**:",
+                        min_value=min_val,
+                        max_value=max_val,
+                        value=max_val,
+                        step=1.0
+                    )
 
         submit = st.form_submit_button("Rank Microwatersheds")
 
-        if submit and selected_attribute and threshold is not None:
-            filtered_gdf = gdf[gdf[field] >= threshold].copy()
-            filtered_gdf["Microwatershed_ID"] = filtered_gdf["Microwatershed_ID"].astype(str)
+        if submit and selected_attribute:
+            if filter_mode == "Range slider":
+                filtered_gdf = gdf[(gdf[field] >= threshold_range[0]) & (gdf[field] <= threshold_range[1])].copy()
+            else:
+                filtered_gdf = gdf.copy()
+                if above_value is not None:
+                    filtered_gdf = filtered_gdf[filtered_gdf[field] >= above_value]
+                if below_value is not None:
+                    filtered_gdf = filtered_gdf[filtered_gdf[field] <= below_value]
 
+            filtered_gdf["Microwatershed_ID"] = filtered_gdf["Microwatershed_ID"].astype(str)
             ranked_df = filtered_gdf.sort_values(by=field, ascending=False).reset_index(drop=True)
             ranked_df["Rank"] = ranked_df.index + 1
 
@@ -1021,10 +1055,16 @@ else:
             st.session_state["zoom_triggered"] = False
             st.session_state["zoom_geom"] = None
 
+
+
+
     # --- Display ranking table ---
     if "ranked_df" in st.session_state:
         st.write(f"### Ranking by: **{st.session_state['selected_attribute']}**")
-        display_cols = ["Rank", "Microwatershed_ID", st.session_state["field"]]
+        table_cols = attribute_options.values()
+        table_cols = [col for col in table_cols if col != st.session_state["field"]]
+
+        display_cols = ["Rank", "Microwatershed_ID", st.session_state["field"]] + table_cols
         st.dataframe(st.session_state["ranked_df"][display_cols], use_container_width=True, hide_index=True)
 
     # --- Select microwatershed to zoom ---
@@ -1082,12 +1122,12 @@ else:
             }
 
         # Add full layer
+        map_fields = ["Microwatershed_ID", st.session_state["field"]] + table_cols
         folium.GeoJson(
             filtered_gdf,
             style_function=style_function,
             tooltip=folium.GeoJsonTooltip(
-                fields=["Microwatershed_ID", field],
-                aliases=["ID", selected_attribute],
+                fields=map_fields,
                 localize=True
             )
         ).add_to(m)
