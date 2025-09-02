@@ -13,4 +13,4 @@ uv.lock
 outputs/
 
 # Ignore specific data inputs
-data/ImperviousArea/*
+data/ImperviousArea/raw/*

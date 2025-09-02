@@ -520,7 +520,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         # Set the gdf to be the output of the pondshed buffering
                         microwatersheds_all_gdf = mws_buffer_sum
 
-                        impervious_raster = 'data/ImperviousArea/FlaImperviousArea_4326.tif'
+                        impervious_raster = 'data/ImperviousArea/downsampled_10m.tif'
 
                         def calculate_impervious_percentage(raster_path, microwatersheds_gdf):
                             # Compute zonal statistics (sum of impervious pixels and total pixel count)
@@ -554,7 +554,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         # NOTE: this file will not be included in the GitHub repo, as it's a large tif file. It can be downloaded from here:
                         # https://coastalimagery.blob.core.windows.net/ccap-landcover/CCAP_bulk_download/High_Resolution_Land_Cover/Phase_1_Initial_Layers/Impervious/index.html
                         # fl_2022_ccap_v2_hires_impervious_20231226.zip
-                        impervious_raster = 'data/ImperviousArea/FlaImperviousArea_4326.tif'
+                        impervious_raster = 'data/ImperviousArea/downsampled_10m.tif'
 
                         def calculate_pondshed_impervious(raster_path, microwatersheds_gdf, pondsheds):
                             # Compute zonal statistics (sum of impervious pixels and total pixel count)
