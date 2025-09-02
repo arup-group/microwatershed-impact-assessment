@@ -159,9 +159,9 @@ def get_whitebox_binary_path():
     system = platform.system()
 
     if system == "Windows":
-        binary_path = "../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_win_amd64/WBT/whitebox_tools.exe"
+        binary_path = "../../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_win_amd64/WBT/whitebox_tools.exe"
     elif system == "Linux":
-        binary_path = "../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_linux_amd64/WBT/whitebox_tools"
+        binary_path = "../../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_linux_amd64/WBT/whitebox_tools"
     else:
         raise RuntimeError(f"Unsupported OS: {system}")
 
