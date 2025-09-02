@@ -161,7 +161,7 @@ def get_whitebox_binary_path():
     if system == "Windows":
         binary_path = "tools/whitebox/whiteboxtools_binaries/WhiteboxTools_win_amd64/WBT/whitebox_tools.exe"
     elif system == "Linux":
-        binary_path = "tools/whitebox/WhiteboxTools_linux_amd64/WhiteboxTools_linux_amd64/WBT/whitebox_tools.py"
+        binary_path = "tools/whitebox/WhiteboxTools_linux_amd64/WhiteboxTools_linux_amd64/WBT/whitebox_tools"
     else:
         raise RuntimeError(f"Unsupported OS: {system}")
 
@@ -199,8 +199,8 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
 
                     binary_path = get_whitebox_binary_path()
                     ## debug
-                    # st.sidebar.write("OS:", platform.system())
-                    # st.sidebar.write("WhiteboxTools path:", binary_path)
+                    st.sidebar.write("OS:", platform.system())
+                    st.sidebar.write("WhiteboxTools path:", binary_path)
 
                     st.header("DEM Conditioning")
                     st.write("Executing WhiteboxTools: FeaturePreservingSmoothing...")
