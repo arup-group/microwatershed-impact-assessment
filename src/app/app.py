@@ -119,20 +119,21 @@ if option == "Draw on map":
     st.sidebar.subheader("Step 2: Draw a Boundary")
     st.sidebar.write("Use the map below to draw a polygon that defines your area of interest. Only polygon shapes are supported.")
 
-    m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
-    Draw(export=False).add_to(m)
-    map_data = st_folium(m, width="100%", height=500)
+    with st.container():
+        m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
+        Draw(export=False).add_to(m)
+        map_data = st_folium(m, width="100%", height=500)
 
-    if map_data["last_active_drawing"]:
-        geometry = map_data["last_active_drawing"].get("geometry", {})
-        coords = geometry.get("coordinates")
-        geom_type = geometry.get("type")
+        if map_data["last_active_drawing"]:
+            geometry = map_data["last_active_drawing"].get("geometry", {})
+            coords = geometry.get("coordinates")
+            geom_type = geometry.get("type")
 
-        if coords and geom_type == "Polygon":
-            polygon = Polygon(coords[0])
-            st.session_state["polygon"] = polygon
-            st.sidebar.success("Polygon captured successfully.")
-            st.sidebar.write(polygon)
+            if coords and geom_type == "Polygon":
+                polygon = Polygon(coords[0])
+                st.session_state["polygon"] = polygon
+                st.sidebar.success("Polygon captured successfully.")
+                st.sidebar.write(polygon)
 
 elif option == "Upload Shapefile":
     st.sidebar.subheader("Step 2: Upload a Shapefile")
