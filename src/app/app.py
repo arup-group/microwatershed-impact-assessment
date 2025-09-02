@@ -201,9 +201,11 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                     ## debug
                     st.sidebar.write("OS:", platform.system())
                     st.sidebar.write("WhiteboxTools path:", binary_path)
+                    
 
                     st.header("DEM Conditioning")
                     st.write("Executing WhiteboxTools: FeaturePreservingSmoothing...")
+                    st.sidebar.write(binary_path)
 
                     cmd = [
                         binary_path,
