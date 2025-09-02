@@ -394,7 +394,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         destination_crs = 'EPSG:26917'
 
                         # Load ponds data
-                        ponds = gpd.read_file(r'data\\IRL-Ponds-Export\\IRL-Ponds-Export_4269.shp')
+                        ponds = gpd.read_file('data/IRL-Ponds-Export/IRL-Ponds-Export_4269.shp')
 
                         # NOTE Filter out ponds with an area less than 1 acre
                         # NOTE: addition: could make this dynamic instead of relying on an existing area attribute
@@ -520,7 +520,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         # Set the gdf to be the output of the pondshed buffering
                         microwatersheds_all_gdf = mws_buffer_sum
 
-                        impervious_raster = r'data\\ImperviousArea\\FlaImperviousArea_4326.tif'
+                        impervious_raster = 'data/ImperviousArea/FlaImperviousArea_4326.tif'
 
                         def calculate_impervious_percentage(raster_path, microwatersheds_gdf):
                             # Compute zonal statistics (sum of impervious pixels and total pixel count)
@@ -554,7 +554,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         # NOTE: this file will not be included in the GitHub repo, as it's a large tif file. It can be downloaded from here:
                         # https://coastalimagery.blob.core.windows.net/ccap-landcover/CCAP_bulk_download/High_Resolution_Land_Cover/Phase_1_Initial_Layers/Impervious/index.html
                         # fl_2022_ccap_v2_hires_impervious_20231226.zip
-                        impervious_raster = r'data\\ImperviousArea\\FlaImperviousArea_4326.tif'
+                        impervious_raster = 'data/ImperviousArea/FlaImperviousArea_4326.tif'
 
                         def calculate_pondshed_impervious(raster_path, microwatersheds_gdf, pondsheds):
                             # Compute zonal statistics (sum of impervious pixels and total pixel count)
@@ -593,12 +593,12 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         microwatersheds_all_gdf = calculate_pondshed_impervious(impervious_raster, microwatersheds_all_gdf, pondsheds_4269)
 
                         # Ensure rainfall raster is in web mercator
-                        annual_rainfall_path = r'data\\Annual-Rainfall\\PRISM_ppt_30yr_normal_4kmM4_annual_bil.bil'
+                        annual_rainfall_path = 'data/Annual-Rainfall/PRISM_ppt_30yr_normal_4kmM4_annual_bil.bil'
 
                         # Open the source raster
                         with rasterio.open(annual_rainfall_path) as src:
                             # Open the target raster (the one you want to match)
-                            with rasterio.open("data\\streamorder\\colorado_sample_dem.tiff") as dst:
+                            with rasterio.open("data/streamorder/colorado_sample_dem.tiff") as dst:
                                 # Calculate the transformation parameters
                                 print(src.crs)
                                 print(dst.crs)
@@ -622,7 +622,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
 
                                 # Save the reprojected raster
                                 with rasterio.open(
-                                    "data\\temp\\temp_reprojected_raster_rainfall.tif",
+                                    "data/temp/temp_reprojected_raster_rainfall.tif",
                                     "w",
                                     driver="GTiff",
                                     width=width,
@@ -634,11 +634,11 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                                 ) as dst:
                                     dst.write(reprojected_data)
 
-                        annual_rainfall_path = 'data\\temp\\temp_reprojected_raster_rainfall.tif'
+                        annual_rainfall_path = 'data/temp/temp_reprojected_raster_rainfall.tif'
                         rain = Grid.from_raster(annual_rainfall_path)
                         rainfall = rain.read_raster(annual_rainfall_path)
 
-                        raster_path = 'data\\temp\\temp_reprojected_raster_rainfall.tif'
+                        raster_path = 'data/temp/temp_reprojected_raster_rainfall.tif'
 
                         def get_annual_rainfall(gdf, raster_path):
                             # Compute zonal statistics (mean value of raster within each polygon)
@@ -663,7 +663,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
 
                         # Annual runoff by land class
 
-                        land_cover = gpd.read_file(r'data\\LandCover\\Land_Cover_IRL_4326.shp')
+                        land_cover = gpd.read_file('data/LandCover/Land_Cover_IRL_4326.shp')
 
                         def calculate_runoff_lulc(land_use_gdf, microwatersheds_gdf, pondsheds):
 
@@ -678,7 +678,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                             land_use_intersect = land_use_intersect.to_crs(epsg=4269)
                             
                             # Read in lookup table
-                            csv_path = r'data\LandCover\FlLandUseForNutrients.csv'
+                            csv_path = 'data/LandCover/FlLandUseForNutrients.csv'
                             # Notable columns in lookup table: 'FlLandUse' (contains the classifications, but some instances have multiple classes separated by commas), 'RunnoffCoefficient', 'TotalNitrogenEMC_(mg/L)', 'TotalPhosEMC_(mg/L)'
                             lookup_df = pd.read_csv(csv_path)
                             # Explode lookup table so each row corresponds to a single land-use class
@@ -756,7 +756,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                             
                             # Calculate and add columns
                             print('reading in landcover')
-                            land_cover = gpd.read_file(r'data\\LandCover\\Land_Cover_IRL_4326.shp')
+                            land_cover = gpd.read_file('data/LandCover/Land_Cover_IRL_4326.shp')
                             gdf, land_use_merge_pshed = calculate_runoff_lulc(land_cover, gdf, pondsheds_4269)
                             print('completed runoff lulc fxn')
                             # gdf['AnnualRunoffMGYr'] = gdf.apply(lambda row: calculate_annual_runoff(row['ImperviousAreaAcres'], row['AnnualRainfallInches']), axis=1)
@@ -783,7 +783,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         microwatersheds_all_gdf = annual_control_volume(microwatersheds_all_gdf)
 
                         # Land cover "urban area" percentage
-                        land_cover = gpd.read_file(r'data\\LandCover\\Land_Cover_IRL_4326.shp')
+                        land_cover = gpd.read_file('data/LandCover/Land_Cover_IRL_4326.shp')
 
                         def urban_area(overlay_gdf, microwatersheds_gdf):
                             # Ensure both GeoDataFrames use the same CRS
@@ -828,7 +828,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         microwatersheds_all_gdf = urban_area(land_cover, microwatersheds_all_gdf)
 
                         # Nutrient load calculation
-                        land_cover = gpd.read_file(r'data\\LandCover\\Land_Cover_IRL_4326.shp')
+                        land_cover = gpd.read_file('data/LandCover/Land_Cover_IRL_4326.shp')
 
                         def calculate_nutrients(overlay_gdf, microwatersheds_gdf, pondsheds):
 
@@ -843,7 +843,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                             land_use_intersect = land_use_intersect.to_crs(epsg=4269)
                             
                             # Read in lookup table
-                            csv_path = r'data\LandCover\FlLandUseForNutrients.csv'
+                            csv_path = 'data/LandCover/FlLandUseForNutrients.csv'
                             # Notable columns in lookup table: 'FlLandUse' (contains the classifications, but some instances have multiple classes separated by commas), 'RunnoffCoefficient', 'TotalNitrogenEMC_(mg/L)', 'TotalPhosEMC_(mg/L)'
                             lookup_df = pd.read_csv(csv_path)
                             # Explode lookup table so each row corresponds to a single land-use class
