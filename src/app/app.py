@@ -119,21 +119,21 @@ if option == "Draw on map":
     st.sidebar.subheader("Step 2: Draw a Boundary")
     st.sidebar.write("Use the map below to draw a polygon that defines your area of interest. Only polygon shapes are supported.")
 
-    with st.container():
-        m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
-        Draw(export=False).add_to(m)
-        map_data = st_folium(m, width="100%", height=500)
+    m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
+    Draw(export=False).add_to(m)
 
-        if map_data["last_active_drawing"]:
-            geometry = map_data["last_active_drawing"].get("geometry", {})
-            coords = geometry.get("coordinates")
-            geom_type = geometry.get("type")
+    map_data = st_folium(m, height=450, use_container_width=True)
 
-            if coords and geom_type == "Polygon":
-                polygon = Polygon(coords[0])
-                st.session_state["polygon"] = polygon
-                st.sidebar.success("Polygon captured successfully.")
-                st.sidebar.write(polygon)
+    if map_data["last_active_drawing"]:
+        geometry = map_data["last_active_drawing"].get("geometry", {})
+        coords = geometry.get("coordinates")
+        geom_type = geometry.get("type")
+
+        if coords and geom_type == "Polygon":
+            polygon = Polygon(coords[0])
+            st.session_state["polygon"] = polygon
+            st.sidebar.success("Polygon captured successfully.")
+            st.sidebar.write(polygon)
 
 elif option == "Upload Shapefile":
     st.sidebar.subheader("Step 2: Upload a Shapefile")
@@ -159,9 +159,9 @@ def get_whitebox_binary_path():
     system = platform.system()
 
     if system == "Windows":
-        binary_path = "tools/whitebox/whiteboxtools_binaries/WhiteboxTools_win_amd64/WBT/whitebox_tools.exe"
+        binary_path = "../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_win_amd64/WBT/whitebox_tools.exe"
     elif system == "Linux":
-        binary_path = "tools/whitebox/whiteboxtools_binaries/WhiteboxTools_linux_amd64/WBT/whitebox_tools"
+        binary_path = "../../tools/whitebox/whiteboxtools_binaries/WhiteboxTools_linux_amd64/WBT/whitebox_tools"
     else:
         raise RuntimeError(f"Unsupported OS: {system}")
 
@@ -959,7 +959,8 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
 
 
 # --- Title ---
-st.title("Microwatershed Prioritization Viewer")
+if st.session_state["microwatersheds_all_gdf"] is not None:
+    st.title("Microwatershed Prioritization Viewer")
 
 # --- Load data only once ---
 if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microwatersheds_all_gdf"] is None:
@@ -1107,4 +1108,4 @@ else:
         colormap.add_to(m)
         folium.LayerControl().add_to(m)
 
-        st_folium(m, height=700, width=900)
+        st_folium(m, height=700, width="100%")
