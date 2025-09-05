@@ -14,3 +14,4 @@ rioxarray
 xarray
 streamlit_folium
 py3dep
+streamlit_dynamic_filters

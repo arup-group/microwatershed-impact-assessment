@@ -37,6 +37,7 @@ import leafmap
 from shapely.geometry import Polygon
 from streamlit_folium import st_folium
 import streamlit.components.v1 as components
+from streamlit_dynamic_filters import DynamicFilters
 
 # ─────────────────────────────────────────────────────────────
 # Local Application Imports
@@ -122,7 +123,7 @@ if option == "Draw on map":
     m = folium.Map(location=[27.6380, -80.3984], zoom_start=13)
     Draw(export=False).add_to(m)
 
-    map_data = st_folium(m, height=450, use_container_width=True)
+    map_data = st_folium(m, height=700, use_container_width=True)
 
     if map_data["last_active_drawing"]:
         geometry = map_data["last_active_drawing"].get("geometry", {})
@@ -340,6 +341,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         with contextlib.redirect_stdout(buffer):
                             basins, branches = make_catchments.generate_catchments(
                                 conditioned_output_path,
+                                # come back and verify these inputs
                                 acc_thresh=5000,
                                 so_filter=4
                             )
@@ -357,47 +359,27 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                     # -------------------------------
                     # Prioritization Attributes - Calculations
                     # -------------------------------
-
-                    # Initialize microwatersheds_all_gdf to None
-                    microwatersheds_all_gdf = None
                     if "microwatersheds_gdf" in st.session_state and st.session_state["microwatersheds_gdf"] is not None:
                         st.header("Prioritization Attributes - Calculations")
                         with st.spinner("Prioritization Attributes - Calculations"):
                         # Calculate areas - tabulate
-
-                            # Add a simple numeric 'Microwatershed_ID' column starting at 1
-                            microwatersheds_gdf['Microwatershed_ID'] = range(1, len(microwatersheds_gdf) + 1)
+                            microwatersheds_gdf['Microwatershed_ID'] = range(1, len(microwatersheds_gdf) + 1) # Add a simple numeric 'Microwatershed_ID' column starting at 1
 
                             # Calculate the area of each polygon in acres (originally in square meters because of the CRS then divide by conversion factor)
-
-                            # Reproject to a suitable projected CRS (e.g., UTM Zone 17N), so that the area has units (web mercator will be in degrees)
-                            microwatersheds_gdf_projected = microwatersheds_gdf.to_crs(epsg=26917)
-
-                            # Calculate area in square meters
-                            microwatersheds_gdf_projected['Area_SqMeters'] = microwatersheds_gdf_projected['BasinGeo'].area
-
-                            # Convert to acres
-                            microwatersheds_gdf_projected['Area_Acres'] = microwatersheds_gdf_projected['Area_SqMeters'] / 4046.85642
-
-                            # Create a new GeoDataFrame with the original ID and the calculated area
-                            area_acres_gdf = microwatersheds_gdf_projected[['Microwatershed_ID', 'Area_Acres']]
-
-                            # Join the 'Area_Acres' field back to the original GeoDataFrame using the original ID
-                            microwatersheds_gdf = microwatersheds_gdf.merge(area_acres_gdf, on='Microwatershed_ID')
-
-                        ## optional
-                        # st.dataframe(microwatersheds_gdf)
+                            microwatersheds_gdf_projected = microwatersheds_gdf.to_crs(epsg=26917) # Reproject to a suitable projected CRS (e.g., UTM Zone 17N), so that the area has units (web mercator will be in degrees)
+                            microwatersheds_gdf_projected['Area_SqMeters'] = microwatersheds_gdf_projected['BasinGeo'].area # Calculate area in square meters
+                            microwatersheds_gdf_projected['Area_Acres'] = microwatersheds_gdf_projected['Area_SqMeters'] / 4046.85642 # Convert to acres
+                            area_acres_gdf = microwatersheds_gdf_projected[['Microwatershed_ID', 'Area_Acres']] # Create a new GeoDataFrame with the original ID and the calculated area
+                            microwatersheds_gdf = microwatersheds_gdf.merge(area_acres_gdf, on='Microwatershed_ID') # Join the 'Area_Acres' field back to the original GeoDataFrame using the original ID
 
                         # Pull in ponds dataset and intersect
                         st.header("Ponds Dataset")
-                        # Define the destination CRS
-                        destination_crs = 'EPSG:26917'
-
-                        # Load ponds data
-                        ponds = gpd.read_file('data/IRL-Ponds-Export/IRL-Ponds-Export_4269.shp')
+                        destination_crs = 'EPSG:26917' # Define the destination CRS
+                        ponds = gpd.read_file('data/IRL-Ponds-Export/IRL-Ponds-Export_4269.shp') # Load ponds data
 
                         # NOTE Filter out ponds with an area less than 1 acre
                         # NOTE: addition: could make this dynamic instead of relying on an existing area attribute
+                        #********** CONFIRM WITH MATT AND MARK K.
                         ponds = ponds[ponds['Area_Acres'] >= 1]
 
                         # Find intersecting ponds - all ponds that TOUCH a MWS boundary in addition to ponds completely within
@@ -429,11 +411,11 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         microwatersheds_all_gdf['Average_Pond_Area_Acres'] = microwatersheds_all_gdf['Average_Pond_Area_Acres'].fillna(0)
 
                         # Calculate the ratio of total pond area to the area of the microwatershed
-                        microwatersheds_all_gdf['Pond_Area_Percentage'] = microwatersheds_all_gdf['Total_Pond_Area_Acres'] / microwatersheds_all_gdf['Area_Acres'] *100
+                        microwatersheds_all_gdf['Pond_Area_Percentage'] = microwatersheds_all_gdf['Total_Pond_Area_Acres'] / microwatersheds_all_gdf['Area_Acres'] * 100
 
                         # Calculate assumed pond volume
                         # This equation is derived from a simple correlation between pond surface area and pond volume for a set of FDOT-controlled ponds
-                        microwatersheds_all_gdf['Pond_Controllable_Volume_Ac-Ft'] = 0.6431378064 + 2.5920596874*microwatersheds_all_gdf['Total_Pond_Area_Acres']
+                        microwatersheds_all_gdf['Pond_Controllable_Volume_Ac-Ft'] = 0.6431378064 + 2.5920596874 * microwatersheds_all_gdf['Total_Pond_Area_Acres']
 
                         # Save to session state for reuse
                         st.session_state["microwatersheds_all_gdf"] = microwatersheds_all_gdf
@@ -454,6 +436,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         input_gdf = ponds_intersect
                         input_mws_gdf = microwatersheds_all_gdf
 
+                        ### CONFIRM WITH ALDEN AND MARK K.
                         def pondshed_buffer(ponds_gdf, mws_all_gdf, tolerance=1e-3):
                             st.info("📐 Calculating controllable volumes and buffer distances...")
 
@@ -662,11 +645,9 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         pondsheds_4269 = get_annual_rainfall(pondsheds_4269, raster_path)
 
                         # Annual runoff by land class
-
                         land_cover = gpd.read_file('data/LandCover/Land_Cover_IRL_4326.shp')
 
                         def calculate_runoff_lulc(land_use_gdf, microwatersheds_gdf, pondsheds):
-
                             # Create areas of intersection
                             land_use_intersect = gpd.overlay(pondsheds, land_use_gdf, how='intersection')
 
@@ -887,14 +868,7 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
 
                         microwatersheds_all_gdf, land_use_merge_pshed = calculate_nutrients(land_cover, microwatersheds_all_gdf, pondsheds_4269)
 
-
-
-                        now = datetime.now()
-                        datetime_str = now.strftime("%Y-%m-%d_%H%M")  # Format: 2024-11-22_0230
-                        file = "table"
-
                         # Filter MWS characteristics
-
                         # Total Pond Area - likely the most important
                         min_total_pond_area = 5
                         microwatersheds_filter_gdf = microwatersheds_all_gdf[microwatersheds_all_gdf['Total_Pond_Area_Acres'] >= min_total_pond_area]
@@ -914,18 +888,20 @@ if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microw
                         microwatersheds_filter_gdf.rename(columns={'Microwatershed_ID': 'Microwshed_ID'}, inplace=True)
 
                         # Select only the specified columns and order by Total_Pond_Area_Acres
-                        columns_to_display = ['Microwshed_ID', 
-                                            'Pond_Count', 
-                                            'Area_Acres',
-                                            'Total_Pond_Area_Acres', 
-                                            'Total_Pondshed_Area_Acres',
-                                            'Pond /_MWS Area_Percentage',
-                                            'Pondshed /_MWS Area_Percentage',
-                                            'Pond_Controllable_Volume_Ac-Ft', 
-                                            'Annual_Volume_Treated_MG/Yr',
-                                            'Nitrogen_lb_per_Pondshed_Area',
-                                            'Percent_Impervious', 
-                                            'Percent_Urban']
+                        columns_to_display = [
+                            'Microwshed_ID', 
+                            'Pond_Count', 
+                            'Area_Acres',
+                            'Total_Pond_Area_Acres', 
+                            'Total_Pondshed_Area_Acres',
+                            'Pond /_MWS Area_Percentage',
+                            'Pondshed /_MWS Area_Percentage',
+                            'Pond_Controllable_Volume_Ac-Ft', 
+                            'Annual_Volume_Treated_MG/Yr',
+                            'Nitrogen_lb_per_Pondshed_Area',
+                            'Percent_Impervious', 
+                            'Percent_Urban'
+                        ]
                         filter_df = microwatersheds_filter_gdf[columns_to_display].sort_values(by='Total_Pondshed_Area_Acres', ascending=False)
 
                         format_columns = {
@@ -966,7 +942,7 @@ if st.session_state["microwatersheds_all_gdf"] is not None:
 
 # --- Load data only once ---
 if "microwatersheds_all_gdf" not in st.session_state or st.session_state["microwatersheds_all_gdf"] is None:
-    st.warning("Please specify an area on interest on the map.")
+    st.warning("Please specify an area of interest on the map.")
 else:
     attribute_options = {
         "Pond Count": "Pond_Count",
@@ -977,6 +953,22 @@ else:
         "Phosphorous lbs per year": "Phosphorous_lb_per_year",
         "Annual Volume Treated (MG/Yr)": "Annual_Volume_Treated_MG/Yr"
     }
+
+
+    
+    # --- Helper function to reset form parameters ---
+    def reset_ranking_parameters():
+        keys_to_reset = [
+            "threshold_range", "above_value", "below_value", "filter_mode"
+        ]
+        for key in keys_to_reset:
+            if key in st.session_state:
+                st.session_state[key] = None
+
+
+    # --- Reset button (outside the form) ---
+    if st.button("Reset Parameters"):
+        reset_ranking_parameters()
 
     # --- Form for ranking ---
     with st.form("ranking_form"):
@@ -1034,6 +1026,7 @@ else:
 
         submit = st.form_submit_button("Rank Microwatersheds")
 
+
         if submit and selected_attribute:
             if filter_mode == "Range slider":
                 filtered_gdf = gdf[(gdf[field] >= threshold_range[0]) & (gdf[field] <= threshold_range[1])].copy()
@@ -1054,8 +1047,6 @@ else:
             st.session_state["field"] = field
             st.session_state["zoom_triggered"] = False
             st.session_state["zoom_geom"] = None
-
-
 
 
     # --- Display ranking table ---

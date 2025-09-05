@@ -19,6 +19,7 @@ dependencies = [
     "rioxarray>=0.15.0",
     "shapely>=2.0.7",
     "streamlit>=1.46.1",
+    "streamlit-dynamic-filters>=0.1.9",
     "streamlit-folium>=0.25.0",
     "xarray>=2024.7.0",
 ]
